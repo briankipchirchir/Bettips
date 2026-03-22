@@ -38,6 +38,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/tips/today").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/payments/mpesa/callback").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
+                    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // Admin only
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 // Authenticated
