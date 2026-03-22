@@ -1,71 +1,60 @@
 package com.bettips.backend.config;
 
+import com.bettips.backend.security.JwtAuthFilter;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.web.cors.CorsConfigurationSource;
-
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final CorsConfigurationSource corsConfigurationSource;
-
-    public SecurityConfig(CorsConfigurationSource corsConfigurationSource) {
-        this.corsConfigurationSource = corsConfigurationSource;
-    }
+    private final JwtAuthFilter jwtAuthFilter;
+    private final CorsConfig corsConfig;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource))
+            .cors(cors -> cors.configurationSource(corsConfig.corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.GET,  "/api/tips/free").permitAll()
-                .requestMatchers(HttpMethod.GET,  "/api/tips/today").permitAll()
+                // Public
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/tips/free").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/tips/today").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/payments/mpesa/callback").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
-                .requestMatchers(HttpMethod.GET,  "/api/tips/premium").authenticated()
-                .requestMatchers(HttpMethod.GET,  "/api/value-bets/**").authenticated()
-                .requestMatchers("/api/admin/**").hasRole("admin")
-                .requestMatchers("/api/users/**").authenticated()
-                .requestMatchers("/api/subscriptions/**").authenticated()
-                .requestMatchers("/api/payments/**").authenticated()
+                // Admin only
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                // Authenticated
                 .anyRequest().authenticated()
             )
-            .oauth2ResourceServer(oauth2 -> oauth2
-                .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
-            );
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
     @Bean
-    public JwtAuthenticationConverter jwtAuthenticationConverter() {
-        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-        converter.setJwtGrantedAuthoritiesConverter(jwt -> {
-            Map<String, Object> realmAccess = jwt.getClaim("realm_access");
-            if (realmAccess == null) return List.of();
-            @SuppressWarnings("unchecked")
-            Collection<String> roles = (Collection<String>) realmAccess.get("roles");
-            if (roles == null) return List.of();
-            return roles.stream()
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
-                .collect(Collectors.toList());
-        });
-        return converter;
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
     }
 }

@@ -40,7 +40,7 @@ public class SubscriptionService {
             .build();
 
         log.info("Activating {} subscription for {} until {}",
-            planLevel, user.getEmail(), endDate);
+            planLevel, user.getPhone(), endDate);
         return subscriptionRepository.save(sub);
     }
 
@@ -62,7 +62,7 @@ public class SubscriptionService {
         expired.forEach(s -> {
             s.setActive(false);
             subscriptionRepository.save(s);
-            log.info("Expired subscription for user: {}", s.getUser().getEmail());
+            log.info("Expired subscription for user: {}", s.getUser().getPhone());
         });
         if (!expired.isEmpty()) {
             log.info("Expired {} subscriptions", expired.size());

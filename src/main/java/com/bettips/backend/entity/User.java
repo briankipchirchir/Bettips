@@ -17,16 +17,13 @@ public class User {
     private String id;
 
     @Column(unique = true, nullable = false)
-    private String keycloakId;
+    private String phone;
 
-    @Column(unique = true, nullable = false)
-    private String email;
+    @Column(nullable = false)
+    private String password;
 
     @Column(nullable = false)
     private String fullName;
-
-    @Column(nullable = false)
-    private String phone;
 
     @Column(nullable = false)
     private String smsNumber;

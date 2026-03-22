@@ -170,7 +170,7 @@ public class MpesaService {
                 );
 
                 log.info("Payment success + tips sent for user: {}, ref: {}",
-                    payment.getUser().getEmail(), mpesaRef);
+                    payment.getUser().getPhone(), mpesaRef);
 
             } else {
                 payment.setStatus(Payment.PaymentStatus.FAILED);

@@ -8,7 +8,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -21,16 +20,13 @@ public class PaymentController {
     private final MpesaService mpesaService;
     private final UserService userService;
 
-    // Initiate STK push
     @PostMapping("/mpesa/stk")
     public ResponseEntity<?> initiatePayment(
-            @AuthenticationPrincipal Jwt jwt,
+            @AuthenticationPrincipal User user,
             @Valid @RequestBody PaymentRequestDto dto) {
-        User user = userService.getOrCreateUser(jwt);
 
-        // Update SMS number if different from M-Pesa number
         if (!dto.getSmsPhone().equals(dto.getMpesaPhone())) {
-            userService.updateSmsNumber(jwt, dto.getSmsPhone());
+            userService.updateSmsNumber(user, dto.getSmsPhone());
         }
 
         String checkoutRequestId = mpesaService.initiateStk(
@@ -51,7 +47,6 @@ public class PaymentController {
             .body(Map.of("message", "Failed to initiate payment. Please try again."));
     }
 
-    // M-Pesa callback — called by Safaricom after payment
     @PostMapping("/mpesa/callback")
     public ResponseEntity<String> mpesaCallback(@RequestBody Map<String, Object> payload) {
         mpesaService.handleCallback(payload);

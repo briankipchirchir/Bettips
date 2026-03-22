@@ -99,7 +99,7 @@ public class TipService {
             .collect(Collectors.toList());
 
         if (eligibleTips.isEmpty()) {
-            log.info("No tips available today for new subscriber: {}", user.getEmail());
+            log.info("No tips available today for new subscriber: {}", user.getPhone());
             return;
         }
 
@@ -114,7 +114,7 @@ public class TipService {
         sb.append("Good luck! 🍀");
 
         smsService.sendSms(user.getSmsNumber(), sb.toString());
-        log.info("Sent {} tips to new subscriber: {}", eligibleTips.size(), user.getEmail());
+        log.info("Sent {} tips to new subscriber: {}", eligibleTips.size(), user.getPhone());
     }
 
     // Send a single tip to all currently eligible subscribers

@@ -8,7 +8,6 @@ import com.bettips.backend.repository.SubscriptionRepository;
 import com.bettips.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,31 +21,12 @@ public class UserService {
     private final UserRepository userRepository;
     private final SubscriptionRepository subscriptionRepository;
 
-    @Transactional
-    public User getOrCreateUser(Jwt jwt) {
-        String keycloakId = jwt.getSubject();
-        return userRepository.findByKeycloakId(keycloakId)
-            .orElseGet(() -> {
-                User user = User.builder()
-                    .keycloakId(keycloakId)
-                    .email(jwt.getClaimAsString("email"))
-                    .fullName(jwt.getClaimAsString("given_name") + " " + jwt.getClaimAsString("family_name"))
-                    .phone(jwt.getClaimAsString("phone_number") != null ? jwt.getClaimAsString("phone_number") : "")
-                    .smsNumber(jwt.getClaimAsString("phone_number") != null ? jwt.getClaimAsString("phone_number") : "")
-                    .build();
-                log.info("Creating new user: {}", user.getEmail());
-                return userRepository.save(user);
-            });
-    }
-
-    public UserDto getUserProfile(Jwt jwt) {
-        User user = getOrCreateUser(jwt);
+    public UserDto getUserProfile(User user) {
         Optional<Subscription> activeSub = subscriptionRepository
             .findTopByUserAndActiveTrueOrderByEndDateDesc(user);
 
         return UserDto.builder()
             .id(user.getId())
-            .email(user.getEmail())
             .fullName(user.getFullName())
             .phone(user.getPhone())
             .smsNumber(user.getSmsNumber())
@@ -57,11 +37,10 @@ public class UserService {
     }
 
     @Transactional
-    public UserDto updateSmsNumber(Jwt jwt, String smsNumber) {
-        User user = getOrCreateUser(jwt);
+    public UserDto updateSmsNumber(User user, String smsNumber) {
         user.setSmsNumber(smsNumber);
         userRepository.save(user);
-        return getUserProfile(jwt);
+        return getUserProfile(user);
     }
 
     public SubscriptionDto toSubscriptionDto(Subscription s) {

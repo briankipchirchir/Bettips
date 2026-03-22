@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
 @Builder
 public class UserDto {
     private String id;
-    private String email;
     private String fullName;
     private String phone;
     private String smsNumber;
