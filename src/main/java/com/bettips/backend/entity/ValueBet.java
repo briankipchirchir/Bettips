@@ -56,4 +56,13 @@ public class ValueBet {
     public enum Category {
         SPORTPESA, BETIKA, CORRECT_SCORE, GOAL_RANGE
     }
+
+    public enum BetStatus {
+        PENDING, WON, LOST
+    }
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private BetStatus status = BetStatus.PENDING;
 }

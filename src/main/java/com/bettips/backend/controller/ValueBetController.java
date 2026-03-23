@@ -6,6 +6,7 @@ import com.bettips.backend.entity.ValueBet;
 import com.bettips.backend.service.ValueBetService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,5 +26,13 @@ public class ValueBetController {
         ValueBet.Category cat = ValueBet.Category.valueOf(
             category.toUpperCase().replace("-", "_"));
         return ResponseEntity.ok(valueBetService.getByCategory(cat, user));
+    }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> updateValueBetStatus(
+            @PathVariable String id,
+            @RequestParam ValueBet.BetStatus status) {
+        return ResponseEntity.ok(valueBetService.updateStatus(id, status));
     }
 }

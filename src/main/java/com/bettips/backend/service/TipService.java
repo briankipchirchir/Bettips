@@ -190,6 +190,14 @@ public class TipService {
             .stream().map(this::toDto).collect(Collectors.toList());
     }
 
+    @Transactional
+    public Tip updateStatus(String tipId, Tip.TipStatus status) {
+        Tip tip = tipRepository.findById(tipId)
+                .orElseThrow(() -> new RuntimeException("Tip not found: " + tipId));
+        tip.setStatus(status);
+        return tipRepository.save(tip);
+    }
+
     public TipDto toDto(Tip tip) {
         return TipDto.builder()
             .id(tip.getId())

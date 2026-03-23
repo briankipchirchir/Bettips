@@ -53,4 +53,13 @@ public class Tip {
     public enum TipLevel {
         FREE, SILVER, GOLD, PLATINUM,VALUE_BETS
     }
+
+    public enum TipStatus {
+        PENDING, WON, LOST
+    }
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private TipStatus status = TipStatus.PENDING;
 }

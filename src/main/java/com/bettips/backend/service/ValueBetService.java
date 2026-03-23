@@ -128,6 +128,14 @@ public class ValueBetService {
             .stream().map(this::toDto).collect(Collectors.toList());
     }
 
+    @Transactional
+    public ValueBet updateStatus(String betId, ValueBet.BetStatus status) {
+        ValueBet bet = valueBetRepository.findById(betId)
+                .orElseThrow(() -> new RuntimeException("ValueBet not found: " + betId));
+        bet.setStatus(status);
+        return valueBetRepository.save(bet);
+    }
+
     public ValueBetDto toDto(ValueBet b) {
         return ValueBetDto.builder()
             .id(b.getId())
