@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -126,11 +127,19 @@ public class TipService {
             return;
         }
 
-        List<Subscription> activeSubscriptions = subscriptionRepository.findAll()
-            .stream()
-            .filter(s -> s.isActive() && !s.isExpired())
-            .filter(s -> canAccessTip(tip.getLevel(), s.getPlanLevel()))
-            .collect(Collectors.toList());
+//        List<Subscription> activeSubscriptions = subscriptionRepository.findAll()
+//            .stream()
+//            .filter(s -> s.isActive() && !s.isExpired())
+//            .filter(s -> canAccessTip(tip.getLevel(), s.getPlanLevel()))
+//            .collect(Collectors.toList());
+
+
+
+        List<Subscription> activeSubscriptions = subscriptionRepository
+                .findAllActiveSubscriptions(LocalDateTime.now())
+                .stream()
+                .filter(s -> canAccessTip(tip.getLevel(), s.getPlanLevel()))
+                .collect(Collectors.toList());
 
         if (activeSubscriptions.isEmpty()) {
             log.info("No eligible subscribers for tip: {}", tip.getFixture());
@@ -164,13 +173,15 @@ public class TipService {
         ).trim();
     }
 
+    // TipService.java — update canAccessTip
     private boolean canAccessTip(Tip.TipLevel tipLevel, Subscription.PlanLevel userPlan) {
         if (tipLevel == Tip.TipLevel.FREE) return true;
         return switch (userPlan) {
-            case PLATINUM -> true;
-            case GOLD     -> tipLevel != Tip.TipLevel.PLATINUM;
-            case SILVER   -> tipLevel == Tip.TipLevel.SILVER;
-            case VALUE_BETS -> tipLevel == Tip.TipLevel.FREE;
+            case PLATINUM   -> true;
+            case GOLD       -> tipLevel != Tip.TipLevel.PLATINUM;
+            case SILVER     -> tipLevel == Tip.TipLevel.SILVER;
+            case VALUE_BETS -> tipLevel == Tip.TipLevel.VALUE_BETS; // fix
+            case FREE, NONE -> false;
         };
     }
 

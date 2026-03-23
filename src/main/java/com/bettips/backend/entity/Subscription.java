@@ -50,7 +50,7 @@ public class Subscription {
     private LocalDateTime createdAt = LocalDateTime.now();
 
     public enum PlanLevel {
-        SILVER, GOLD, PLATINUM, VALUE_BETS
+        SILVER, GOLD, PLATINUM, VALUE_BETS,FREE,NONE
     }
 
     public enum Duration {

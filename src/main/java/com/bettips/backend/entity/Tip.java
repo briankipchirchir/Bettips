@@ -51,6 +51,6 @@ public class Tip {
     private LocalDateTime createdAt = LocalDateTime.now();
 
     public enum TipLevel {
-        FREE, SILVER, GOLD, PLATINUM
+        FREE, SILVER, GOLD, PLATINUM,VALUE_BETS
     }
 }
