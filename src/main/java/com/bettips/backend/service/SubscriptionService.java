@@ -72,18 +72,31 @@ public class SubscriptionService {
     public int getPrice(Subscription.PlanLevel plan, Subscription.Duration duration) {
         return switch (plan) {
             case SILVER -> switch (duration) {
-                case ONE_DAY -> 50; case THREE_DAYS -> 120;
-                case ONE_WEEK -> 250; case ONE_MONTH -> 800;
+                case ONE_DAY    -> 50;
+                case THREE_DAYS -> 120;
+                case ONE_WEEK   -> 250;
+                case ONE_MONTH  -> 800;
             };
             case GOLD -> switch (duration) {
-                case ONE_DAY -> 70; case THREE_DAYS -> 180;
-                case ONE_WEEK -> 380; case ONE_MONTH -> 1200;
+                case ONE_DAY    -> 70;
+                case THREE_DAYS -> 180;
+                case ONE_WEEK   -> 380;
+                case ONE_MONTH  -> 1200;
             };
             case PLATINUM -> switch (duration) {
-                case ONE_DAY -> 100; case THREE_DAYS -> 250;
-                case ONE_WEEK -> 500; case ONE_MONTH -> 1800;
+                case ONE_DAY    -> 100;
+                case THREE_DAYS -> 250;
+                case ONE_WEEK   -> 500;
+                case ONE_MONTH  -> 1800;
             };
-            case VALUE_BETS -> 99;
+            case VALUE_BETS -> switch (duration) {
+                case ONE_DAY    -> 99;
+                case THREE_DAYS -> 250;
+                case ONE_WEEK   -> 500;
+                case ONE_MONTH  -> 1500;
+            };
+            case FREE, NONE -> 0;
         };
     }
-}
+    }
+
