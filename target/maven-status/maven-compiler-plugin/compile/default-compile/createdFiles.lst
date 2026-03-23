@@ -35,6 +35,7 @@ com/bettips/backend/repository/PaymentRepository.class
 com/bettips/backend/service/TipService$1.class
 com/bettips/backend/service/SubscriptionService.class
 com/bettips/backend/entity/User$UserBuilder.class
+com/bettips/backend/service/PayHeroService.class
 com/bettips/backend/dto/UserDto$UserDtoBuilder.class
 com/bettips/backend/entity/ValueBet.class
 com/bettips/backend/BettingPredictionsBackendApplication.class

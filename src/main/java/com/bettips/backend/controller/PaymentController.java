@@ -2,7 +2,7 @@ package com.bettips.backend.controller;
 
 import com.bettips.backend.dto.PaymentRequestDto;
 import com.bettips.backend.entity.User;
-import com.bettips.backend.service.MpesaService;
+import com.bettips.backend.service.PayHeroService;
 import com.bettips.backend.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +17,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PaymentController {
 
-    private final MpesaService mpesaService;
+    private final PayHeroService payHeroService;
     private final UserService userService;
 
     @PostMapping("/mpesa/stk")
@@ -29,7 +29,7 @@ public class PaymentController {
             userService.updateSmsNumber(user, dto.getSmsPhone());
         }
 
-        String checkoutRequestId = mpesaService.initiateStk(
+        String ref = payHeroService.initiateStk(
             user,
             dto.getMpesaPhone(),
             dto.getSmsPhone(),
@@ -37,10 +37,10 @@ public class PaymentController {
             dto.getDuration()
         );
 
-        if (checkoutRequestId != null) {
+        if (ref != null) {
             return ResponseEntity.ok(Map.of(
                 "message", "STK push sent. Enter your M-Pesa PIN to complete payment.",
-                "checkoutRequestId", checkoutRequestId
+                "checkoutRequestId", ref
             ));
         }
         return ResponseEntity.badRequest()
@@ -49,7 +49,7 @@ public class PaymentController {
 
     @PostMapping("/mpesa/callback")
     public ResponseEntity<String> mpesaCallback(@RequestBody Map<String, Object> payload) {
-        mpesaService.handleCallback(payload);
+        payHeroService.handleCallback(payload);
         return ResponseEntity.ok("OK");
     }
 }
