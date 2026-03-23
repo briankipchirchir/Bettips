@@ -105,67 +105,71 @@ public class PayHeroService {
             return null;
         }
     }
-
     @Transactional
     public void handleCallback(Map<String, Object> payload) {
         try {
             log.info("PayHero callback received: {}", payload);
 
-            String externalRef   = (String) payload.get("external_reference");
-            String status        = (String) payload.get("status");
-            String mpesaRef      = (String) payload.get("merchant_reference");
+            // PayHero wraps everything inside "response"
+            Map<String, Object> response = (Map<String, Object>) payload.get("response");
+            if (response == null) {
+                log.warn("PayHero callback missing response object");
+                return;
+            }
 
-            if (externalRef == null) {
-                log.warn("PayHero callback missing external_reference");
+            String externalRef = String.valueOf(response.get("ExternalReference"));
+            String status      = String.valueOf(response.get("Status"));      // "Failed" or "Success"
+            String mpesaRef    = String.valueOf(response.get("MpesaReceiptNumber"));
+            String resultCode  = String.valueOf(response.get("ResultCode"));
+
+            if ("null".equals(externalRef) || externalRef == null) {
+                log.warn("PayHero callback missing ExternalReference");
                 return;
             }
 
             Payment payment = paymentRepository.findByCheckoutRequestId(externalRef)
-                .orElseThrow(() -> new RuntimeException("Payment not found: " + externalRef));
+                    .orElseThrow(() -> new RuntimeException("Payment not found: " + externalRef));
 
-            if ("SUCCESS".equalsIgnoreCase(status)) {
+            if ("Success".equalsIgnoreCase(status)) {
                 payment.setStatus(Payment.PaymentStatus.SUCCESS);
                 payment.setMpesaRef(mpesaRef);
                 payment.setCompletedAt(LocalDateTime.now());
                 paymentRepository.save(payment);
 
-                // Activate subscription
                 Subscription subscription = subscriptionService.activate(
-                    payment.getUser(),
-                    payment.getPlanLevel(),
-                    payment.getDuration(),
-                    payment.getAmount(),
-                    mpesaRef
+                        payment.getUser(),
+                        payment.getPlanLevel(),
+                        payment.getDuration(),
+                        payment.getAmount(),
+                        mpesaRef
                 );
 
-                // Send confirmation SMS
                 String confirmMsg = String.format(
-                    "BetTips: Payment confirmed! KSH %d received. Your %s plan is active until %s. Ref: %s",
-                    payment.getAmount(),
-                    payment.getPlanLevel().name(),
-                    subscription.getEndDate().toLocalDate().toString(),
-                    mpesaRef != null ? mpesaRef : externalRef
+                        "BetTips: Payment confirmed! KSH %d received. Your %s plan is active until %s. Ref: %s",
+                        payment.getAmount(),
+                        payment.getPlanLevel().name(),
+                        subscription.getEndDate().toLocalDate().toString(),
+                        mpesaRef != null ? mpesaRef : externalRef
                 );
                 smsService.sendSms(payment.getUser().getSmsNumber(), confirmMsg);
+                tipService.sendTodaysTipsToNewSubscriber(payment.getUser(), payment.getPlanLevel());
 
-                // Send today's tips to new subscriber
-                tipService.sendTodaysTipsToNewSubscriber(
-                    payment.getUser(),
-                    payment.getPlanLevel()
-                );
+                log.info("Payment SUCCESS for user: {}, ref: {}", payment.getUser().getPhone(), externalRef);
 
-                log.info("Payment SUCCESS for user: {}, ref: {}",
-                    payment.getUser().getPhone(), externalRef);
-
-            } else if ("FAILED".equalsIgnoreCase(status)) {
+            } else if ("Failed".equalsIgnoreCase(status)) {
                 payment.setStatus(Payment.PaymentStatus.FAILED);
                 paymentRepository.save(payment);
 
-                smsService.sendSms(payment.getUser().getSmsNumber(),
-                    "BetTips: Payment failed. Please try again or contact support.");
+                // Don't SMS on user-cancelled (ResultCode 1032)
+                if (!"1032".equals(resultCode)) {
+                    smsService.sendSms(payment.getUser().getSmsNumber(),
+                            "BetTips: Payment failed. Please try again or contact support.");
+                }
 
-                log.warn("Payment FAILED for ref: {}", externalRef);
+                log.warn("Payment FAILED for ref: {} ResultCode: {} Desc: {}",
+                        externalRef, resultCode, response.get("ResultDesc"));
             }
+
         } catch (Exception e) {
             log.error("Error handling PayHero callback: {}", e.getMessage());
         }
