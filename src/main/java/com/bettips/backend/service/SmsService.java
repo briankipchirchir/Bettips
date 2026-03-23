@@ -20,7 +20,7 @@ public class SmsService {
     private String senderId;
 
     private final WebClient webClient = WebClient.builder()
-            .baseUrl("https://api.mobitechtechnologies.com")
+            .baseUrl("https://app.mobitechtechnologies.com")
             .build();
 
     public void sendSms(String phoneNumber, String message) {
@@ -36,7 +36,7 @@ public class SmsService {
             body.put("message", message);
 
             String response = webClient.post()
-                    .uri("/sms/sendsms")
+                    .uri("//sms/sendsms")
                     .header("Authorization", "Bearer " + apiKey)
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(body)
