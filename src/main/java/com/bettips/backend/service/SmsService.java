@@ -37,7 +37,7 @@ public class SmsService {
 
             String response = webClient.post()
                     .uri("//sms/sendsms")
-                    .header("Authorization", "Bearer " + apiKey)
+                    .header("h_api_key", apiKey)
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(body)
                     .retrieve()
