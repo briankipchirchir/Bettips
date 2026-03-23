@@ -10,4 +10,8 @@ public interface TipRepository extends JpaRepository<Tip, String> {
     List<Tip> findByGameDateAndLevel(LocalDate date, Tip.TipLevel level);
     List<Tip> findByLevel(Tip.TipLevel level);
     List<Tip> findByGameDateAndSentFalse(LocalDate date);
+
+    List<Tip> findByStatusAndGameDate(Tip.TipStatus status, LocalDate gameDate);
+    List<Tip> findByStatusAndGameDateBetween(Tip.TipStatus status, LocalDate start, LocalDate end);
 }
+
