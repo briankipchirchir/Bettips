@@ -83,6 +83,7 @@ public class SubscriptionService {
                 case ONE_DAY -> 100; case THREE_DAYS -> 250;
                 case ONE_WEEK -> 500; case ONE_MONTH -> 1800;
             };
+            case VALUE_BETS -> 99;
         };
     }
 }

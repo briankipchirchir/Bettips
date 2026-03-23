@@ -28,7 +28,12 @@ public class ValueBetService {
         List<ValueBet> bets = valueBetRepository.findByCategoryOrderByMatchNumberAsc(category);
         boolean isSubscribed = subscriptionRepository
             .findTopByUserAndActiveTrueOrderByEndDateDesc(user)
-            .map(s -> !s.isExpired())
+            .map(s -> !s.isExpired() && (
+                s.getPlanLevel() == Subscription.PlanLevel.VALUE_BETS ||
+                s.getPlanLevel() == Subscription.PlanLevel.SILVER ||
+                s.getPlanLevel() == Subscription.PlanLevel.GOLD ||
+                s.getPlanLevel() == Subscription.PlanLevel.PLATINUM
+            ))
             .orElse(false);
 
         return bets.stream()

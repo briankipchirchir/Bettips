@@ -170,6 +170,7 @@ public class TipService {
             case PLATINUM -> true;
             case GOLD     -> tipLevel != Tip.TipLevel.PLATINUM;
             case SILVER   -> tipLevel == Tip.TipLevel.SILVER;
+            case VALUE_BETS -> tipLevel == Tip.TipLevel.FREE;
         };
     }
 
