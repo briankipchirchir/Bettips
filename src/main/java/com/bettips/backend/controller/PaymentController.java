@@ -52,4 +52,9 @@ public class PaymentController {
         payHeroService.handleCallback(payload);
         return ResponseEntity.ok("OK");
     }
+
+    @GetMapping("/status/{reference}")
+    public ResponseEntity<?> checkPaymentStatus(@PathVariable String reference) {
+        return ResponseEntity.ok(payHeroService.getPaymentStatus(reference));
+    }
 }

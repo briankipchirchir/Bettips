@@ -175,6 +175,15 @@ public class PayHeroService {
         }
     }
 
+    public Map<String, String> getPaymentStatus(String reference) {
+        return paymentRepository.findByCheckoutRequestId(reference)
+                .map(payment -> Map.of(
+                        "status", payment.getStatus().name(), // "PENDING", "SUCCESS", "FAILED"
+                        "reference", reference
+                ))
+                .orElse(Map.of("status", "NOT_FOUND", "reference", reference));
+    }
+
     private String normalizePhone(String phone) {
         if (phone == null) return "";
         phone = phone.trim().replaceAll("\\s+", "");
