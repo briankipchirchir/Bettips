@@ -9,6 +9,8 @@ import com.bettips.backend.repository.SubscriptionRepository;
 import com.bettips.backend.repository.TipRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,11 +29,13 @@ public class TipService {
     private final SubscriptionRepository subscriptionRepository;
     private final SmsService smsService;
 
+    @Cacheable(value = "tips", key = "'free:' + #date")
     public List<TipDto> getFreeTips(LocalDate date) {
         return tipRepository.findByGameDateAndLevel(date, Tip.TipLevel.FREE)
             .stream().map(this::toDto).collect(Collectors.toList());
     }
 
+    @Cacheable(value = "tips", key = "'premium:' + #date + ':' + #user.id")
     public List<TipDto> getPremiumTips(LocalDate date, User user) {
         Optional<Subscription> activeSub = subscriptionRepository
             .findTopByUserAndActiveTrueOrderByEndDateDesc(user);
@@ -49,6 +53,7 @@ public class TipService {
 
     // Admin creates tip — automatically sends SMS to all eligible subscribers
     @Transactional
+    @CacheEvict(value = "tips", allEntries = true)
     public TipDto createTip(AdminTipRequestDto dto) {
         Tip tip = Tip.builder()
             .league(dto.getLeague())
@@ -86,6 +91,7 @@ public class TipService {
     }
 
     @Transactional
+    @CacheEvict(value = "tips", allEntries = true)
     public void deleteTip(String id) {
         tipRepository.deleteById(id);
     }
@@ -185,6 +191,7 @@ public class TipService {
         };
     }
 
+    @Cacheable(value = "tips", key = "'all:' + #date")
     public List<TipDto> getAllTips(LocalDate date) {
         return tipRepository.findByGameDate(date)
             .stream().map(this::toDto).collect(Collectors.toList());

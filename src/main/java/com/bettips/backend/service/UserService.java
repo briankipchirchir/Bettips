@@ -8,6 +8,7 @@ import com.bettips.backend.repository.SubscriptionRepository;
 import com.bettips.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final SubscriptionRepository subscriptionRepository;
 
+    @Cacheable(value = "userProfile", key = "#username")
     public UserDto getUserProfile(User user) {
         Optional<Subscription> activeSub = subscriptionRepository
             .findTopByUserAndActiveTrueOrderByEndDateDesc(user);

@@ -1,4 +1,6 @@
 com/bettips/backend/dto/AuthResponseDto.class
+com/bettips/backend/entity/Tip$TipStatus.class
+com/bettips/backend/config/RateLimitingFilter.class
 com/bettips/backend/controller/UserController.class
 com/bettips/backend/config/CorsConfig.class
 com/bettips/backend/service/TipService.class
@@ -40,13 +42,14 @@ com/bettips/backend/dto/UserDto$UserDtoBuilder.class
 com/bettips/backend/entity/ValueBet.class
 com/bettips/backend/BettingPredictionsBackendApplication.class
 com/bettips/backend/dto/UserDto.class
-com/bettips/backend/service/MpesaService.class
 com/bettips/backend/controller/ValueBetController.class
 com/bettips/backend/controller/AdminController.class
 com/bettips/backend/entity/Payment$PaymentBuilder.class
+com/bettips/backend/entity/ValueBet$BetStatus.class
 com/bettips/backend/entity/User.class
 com/bettips/backend/dto/TipDto$TipDtoBuilder.class
 com/bettips/backend/entity/Subscription$SubscriptionBuilder.class
+com/bettips/backend/config/CacheConfig.class
 com/bettips/backend/entity/Subscription.class
 com/bettips/backend/dto/AdminTipRequestDto.class
 com/bettips/backend/service/ValueBetService.class

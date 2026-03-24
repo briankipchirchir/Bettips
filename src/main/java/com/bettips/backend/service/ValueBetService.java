@@ -9,6 +9,7 @@ import com.bettips.backend.repository.SubscriptionRepository;
 import com.bettips.backend.repository.ValueBetRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +48,7 @@ public class ValueBetService {
 
     // Admin creates value bet — automatically sends SMS to all active subscribers
     @Transactional
+    @CacheEvict(value = "valueBets", allEntries = true)
     public ValueBetDto create(AdminValueBetRequestDto dto) {
         ValueBet bet = ValueBet.builder()
             .category(dto.getCategory())
@@ -123,6 +125,8 @@ public class ValueBetService {
         log.info("Auto-sent value bet '{}' to {} subscribers", bet.getFixture(), sentCount);
     }
 
+
+    @CacheEvict(value = "tips", allEntries = true)
     public List<ValueBetDto> getAll(ValueBet.Category category) {
         return valueBetRepository.findByCategoryOrderByMatchNumberAsc(category)
             .stream().map(this::toDto).collect(Collectors.toList());

@@ -1,5 +1,7 @@
 /home/kipchirchir/Betting/betting-predictions-backend/src/main/java/com/bettips/backend/BettingPredictionsBackendApplication.java
+/home/kipchirchir/Betting/betting-predictions-backend/src/main/java/com/bettips/backend/config/CacheConfig.java
 /home/kipchirchir/Betting/betting-predictions-backend/src/main/java/com/bettips/backend/config/CorsConfig.java
+/home/kipchirchir/Betting/betting-predictions-backend/src/main/java/com/bettips/backend/config/RateLimitingFilter.java
 /home/kipchirchir/Betting/betting-predictions-backend/src/main/java/com/bettips/backend/config/SecurityConfig.java
 /home/kipchirchir/Betting/betting-predictions-backend/src/main/java/com/bettips/backend/controller/AdminController.java
 /home/kipchirchir/Betting/betting-predictions-backend/src/main/java/com/bettips/backend/controller/AuthController.java
@@ -31,7 +33,6 @@
 /home/kipchirchir/Betting/betting-predictions-backend/src/main/java/com/bettips/backend/security/JwtService.java
 /home/kipchirchir/Betting/betting-predictions-backend/src/main/java/com/bettips/backend/security/UserDetailsServiceImpl.java
 /home/kipchirchir/Betting/betting-predictions-backend/src/main/java/com/bettips/backend/service/AuthService.java
-/home/kipchirchir/Betting/betting-predictions-backend/src/main/java/com/bettips/backend/service/MpesaService.java
 /home/kipchirchir/Betting/betting-predictions-backend/src/main/java/com/bettips/backend/service/PayHeroService.java
 /home/kipchirchir/Betting/betting-predictions-backend/src/main/java/com/bettips/backend/service/SmsService.java
 /home/kipchirchir/Betting/betting-predictions-backend/src/main/java/com/bettips/backend/service/SubscriptionService.java
