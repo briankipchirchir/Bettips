@@ -18,4 +18,7 @@ public interface PaymentRepository extends JpaRepository<Payment, String> {
     @Query("SELECT COUNT(p) FROM Payment p WHERE p.status = 'SUCCESS'")
     long countSuccessful();
 
+    @Query("SELECT p FROM Payment p JOIN FETCH p.user")
+    List<Payment> findAllWithUser();
+
 }

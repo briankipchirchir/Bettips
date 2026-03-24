@@ -15,6 +15,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -103,13 +104,12 @@ public class AdminController {
         return ResponseEntity.ok(userRepository.findAll());
     }
 
-    // ── Payments ──
     @GetMapping("/payments")
     public ResponseEntity<?> getPayments() {
         return ResponseEntity.ok(
-                paymentRepository.findAll().stream()
+                paymentRepository.findAllWithUser().stream()  // ← change findAll() to findAllWithUser()
                         .map(p -> {
-                            Map<String, Object> map = new java.util.HashMap<>();
+                            Map<String, Object> map = new HashMap<>();
                             map.put("id",                p.getId());
                             map.put("amount",            p.getAmount());
                             map.put("phoneNumber",       p.getPhoneNumber());
