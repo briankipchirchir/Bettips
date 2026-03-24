@@ -106,6 +106,27 @@ public class AdminController {
     // ── Payments ──
     @GetMapping("/payments")
     public ResponseEntity<?> getPayments() {
-        return ResponseEntity.ok(paymentRepository.findAll());
+        return ResponseEntity.ok(
+                paymentRepository.findAll().stream()
+                        .map(p -> {
+                            Map<String, Object> map = new java.util.HashMap<>();
+                            map.put("id",                p.getId());
+                            map.put("amount",            p.getAmount());
+                            map.put("phoneNumber",       p.getPhoneNumber());
+                            map.put("planLevel",         p.getPlanLevel());
+                            map.put("duration",          p.getDuration());
+                            map.put("status",            p.getStatus());
+                            map.put("mpesaRef",          p.getMpesaRef()          != null ? p.getMpesaRef()          : "");
+                            map.put("checkoutRequestId", p.getCheckoutRequestId() != null ? p.getCheckoutRequestId() : "");
+                            map.put("createdAt",         p.getCreatedAt()         != null ? p.getCreatedAt().toString() : "");
+                            map.put("completedAt",       p.getCompletedAt()       != null ? p.getCompletedAt().toString() : "");
+                            map.put("user", Map.of(
+                                    "fullName", p.getUser() != null ? p.getUser().getFullName() : "",
+                                    "phone",    p.getUser() != null ? p.getUser().getPhone()    : ""
+                            ));
+                            return map;
+                        })
+                        .toList()
+        );
     }
 }
