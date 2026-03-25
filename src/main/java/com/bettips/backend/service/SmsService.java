@@ -24,19 +24,19 @@ public class SmsService {
             .baseUrl("https://app.mobitechtechnologies.com")
             .build();
 
-    @Async
+    @Async("taskExecutor")
     public void sendSms(String phoneNumber, String message) {
         String normalized = normalizePhone(phoneNumber);
         log.info("Sending SMS via Mobitech to {}", normalized);
 
-        try {
-            Map<String, Object> body = new HashMap<>();
-            body.put("mobile", normalized);
-            body.put("response_type", "json");
-            body.put("sender_name", senderId);
-            body.put("service_id", 0); // optional depending on your account
-            body.put("message", message);
+        Map<String, Object> body = new HashMap<>();
+        body.put("mobile", normalized);
+        body.put("response_type", "json");
+        body.put("sender_name", senderId);
+        body.put("service_id", 0); // optional depending on your account
+        body.put("message", message);
 
+        try {
             String response = webClient.post()
                     .uri("/sms/sendsms")
                     .header("h_api_key", apiKey)
@@ -50,6 +50,24 @@ public class SmsService {
 
         } catch (Exception e) {
             log.error("Mobitech SMS failed for {}: {}", normalized, e.getMessage());
+
+            try {
+                Thread.sleep(1000); // wait 1 sec before retry
+
+                webClient.post()
+                        .uri("/sms/sendsms")
+                        .header("h_api_key", apiKey)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .bodyValue(body)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+
+                log.info("Retry SMS success for {}", normalized);
+
+            } catch (Exception ex) {
+                log.error("Retry failed for {}", normalized);
+            }
         }
     }
 

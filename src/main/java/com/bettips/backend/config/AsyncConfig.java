@@ -10,12 +10,12 @@ import java.util.concurrent.Executor;
 @Configuration
 public class AsyncConfig {
 
-    @Bean(name = "smsExecutor")
-    public Executor smsExecutor() {
+    @Bean(name = "taskExecutor")
+    public Executor taskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(3);
-        executor.setMaxPoolSize(10);
-        executor.setQueueCapacity(100);
+        executor.setCorePoolSize(2);   // keep small to avoid overload
+        executor.setMaxPoolSize(5);
+        executor.setQueueCapacity(50);
         executor.setThreadNamePrefix("sms-");
         executor.initialize();
         return executor;

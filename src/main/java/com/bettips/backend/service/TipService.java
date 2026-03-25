@@ -168,7 +168,25 @@ public class TipService {
                 continue;
             }
 
+            if (user.getSmsNumber() == null || user.getSmsNumber().isBlank()) {
+                log.warn("User {} has no SMS number", user.getPhone());
+                continue;
+            }
+
             smsService.sendSms(user.getSmsNumber(), message);
+
+            sentTipRepository.save(SentTip.builder()
+                    .user(user)
+                    .tipId(tip.getId())
+                    .build());
+
+            sentCount++;
+
+            try {
+                Thread.sleep(300); // 🔥 VERY IMPORTANT (prevents Mobitech 500 error)
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
 
             // Record that this user received this tip
             sentTipRepository.save(SentTip.builder()
