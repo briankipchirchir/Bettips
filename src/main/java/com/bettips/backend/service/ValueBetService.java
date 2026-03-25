@@ -97,6 +97,12 @@ public class ValueBetService {
     private void sendToAllSubscribers(ValueBet bet) {
         List<Subscription> activeSubs = subscriptionRepository.findAll().stream()
             .filter(s -> s.isActive() && !s.isExpired())
+                .filter(s ->
+                        s.getPlanLevel() == Subscription.PlanLevel.VALUE_BETS ||
+                                s.getPlanLevel() == Subscription.PlanLevel.SILVER ||
+                                s.getPlanLevel() == Subscription.PlanLevel.GOLD ||
+                                s.getPlanLevel() == Subscription.PlanLevel.PLATINUM
+                )
             .collect(Collectors.toList());
 
         if (activeSubs.isEmpty()) {
@@ -175,8 +181,15 @@ public class ValueBetService {
     }
 
     private void sendBundledValueBetSms(ValueBet.Category category, List<ValueBet> bets) {
+        // ✅ Added plan-level filter — mirrors sendToAllSubscribers
         List<Subscription> activeSubs = subscriptionRepository.findAll().stream()
                 .filter(s -> s.isActive() && !s.isExpired())
+                .filter(s ->
+                        s.getPlanLevel() == Subscription.PlanLevel.VALUE_BETS ||
+                                s.getPlanLevel() == Subscription.PlanLevel.SILVER     ||
+                                s.getPlanLevel() == Subscription.PlanLevel.GOLD       ||
+                                s.getPlanLevel() == Subscription.PlanLevel.PLATINUM
+                )
                 .collect(Collectors.toList());
 
         if (activeSubs.isEmpty()) {
@@ -203,6 +216,7 @@ public class ValueBetService {
 
         String message = sb.toString().trim();
         int sentCount = 0;
+
         for (Subscription sub : activeSubs) {
             smsService.sendSms(sub.getUser().getSmsNumber(), message);
             sentCount++;

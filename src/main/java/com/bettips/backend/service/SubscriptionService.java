@@ -72,7 +72,7 @@ public class SubscriptionService {
     public int getPrice(Subscription.PlanLevel plan, Subscription.Duration duration) {
         return switch (plan) {
             case SILVER -> switch (duration) {
-                case ONE_DAY    -> 1;
+                case ONE_DAY    -> 50;
                 case THREE_DAYS -> 120;
                 case ONE_WEEK   -> 250;
                 case ONE_MONTH  -> 800;

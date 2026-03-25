@@ -175,6 +175,7 @@ public class TipService {
 
             smsService.sendSms(user.getSmsNumber(), message);
 
+            // ✅ Save ONCE only — removed the duplicate save + sentCount below
             sentTipRepository.save(SentTip.builder()
                     .user(user)
                     .tipId(tip.getId())
@@ -183,25 +184,16 @@ public class TipService {
             sentCount++;
 
             try {
-                Thread.sleep(300); // 🔥 VERY IMPORTANT (prevents Mobitech 500 error)
+                Thread.sleep(300);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
-
-            // Record that this user received this tip
-            sentTipRepository.save(SentTip.builder()
-                    .user(user)
-                    .tipId(tip.getId())
-                    .build());
-
-            sentCount++;
         }
 
         tip.setSent(true);
         tipRepository.save(tip);
         log.info("Auto-sent tip '{}' to {} subscribers", tip.getFixture(), sentCount);
     }
-
     private String buildTipSms(Tip tip) {
         return String.format(
             "BetTips %s\n%s | %s\nPick: %s | Odds: %s\n%s",
