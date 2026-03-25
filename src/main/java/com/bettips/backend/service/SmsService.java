@@ -7,11 +7,12 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.HashMap;
+import java.time.Instant;
 import java.util.Map;
+import java.util.concurrent.*;
 
-@Service
 @Slf4j
+@Service
 public class SmsService {
 
     @Value("${mobitech.api-key}")
@@ -24,50 +25,87 @@ public class SmsService {
             .baseUrl("https://app.mobitechtechnologies.com")
             .build();
 
+    // Queue per phone number
+    private final ConcurrentMap<String, BlockingQueue<Map<String, Object>>> smsQueues = new ConcurrentHashMap<>();
+    // Track last usage per phone to clean up inactive queues
+    private final ConcurrentMap<String, Instant> lastUsedMap = new ConcurrentHashMap<>();
+
+    // Executor for sending SMSs sequentially
+    private final ExecutorService queueExecutor = Executors.newCachedThreadPool();
+
+    // Time after which inactive queues are removed (e.g., 10 minutes)
+    private final long INACTIVE_QUEUE_TIMEOUT_MS = 10 * 60 * 1000;
+
     @Async("taskExecutor")
     public void sendSms(String phoneNumber, String message) {
         String normalized = normalizePhone(phoneNumber);
-        log.info("Sending SMS via Mobitech to {}", normalized);
 
-        Map<String, Object> body = new HashMap<>();
-        body.put("mobile", normalized);
-        body.put("response_type", "json");
-        body.put("sender_name", senderId);
-        body.put("service_id", 0); // optional depending on your account
-        body.put("message", message);
+        Map<String, Object> body = Map.of(
+                "mobile", normalized,
+                "response_type", "json",
+                "sender_name", senderId,
+                "service_id", 0,
+                "message", message
+        );
 
+        lastUsedMap.put(normalized, Instant.now());
+
+        smsQueues.computeIfAbsent(normalized, k -> {
+            BlockingQueue<Map<String, Object>> queue = new LinkedBlockingQueue<>();
+            queueExecutor.submit(() -> processQueue(normalized, queue));
+            return queue;
+        }).add(body);
+    }
+
+    private void processQueue(String phone, BlockingQueue<Map<String, Object>> queue) {
         try {
-            String response = webClient.post()
-                    .uri("/sms/sendsms")
-                    .header("h_api_key", apiKey)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(body)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block();
+            while (true) {
+                Map<String, Object> body = queue.poll(1, TimeUnit.SECONDS); // wait max 1s
 
-            log.info("Mobitech SMS sent: {}", response);
+                // Check for queue inactivity
+                Instant lastUsed = lastUsedMap.getOrDefault(phone, Instant.now());
+                if (queue.isEmpty() && Instant.now().minusMillis(INACTIVE_QUEUE_TIMEOUT_MS).isAfter(lastUsed)) {
+                    smsQueues.remove(phone);
+                    lastUsedMap.remove(phone);
+                    log.info("Removed inactive SMS queue for {}", phone);
+                    break;
+                }
 
-        } catch (Exception e) {
-            log.error("Mobitech SMS failed for {}: {}", normalized, e.getMessage());
+                if (body == null) continue; // no message, loop again
 
-            try {
-                Thread.sleep(1000); // wait 1 sec before retry
+                int maxAttempts = 3;
 
-                webClient.post()
-                        .uri("/sms/sendsms")
-                        .header("h_api_key", apiKey)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(body)
-                        .retrieve()
-                        .bodyToMono(String.class)
-                        .block();
+                for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+                    try {
+                        String response = webClient.post()
+                                .uri("/sms/sendsms")
+                                .header("h_api_key", apiKey)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .bodyValue(body)
+                                .retrieve()
+                                .bodyToMono(String.class)
+                                .block();
 
-                log.info("Retry SMS success for {}", normalized);
+                        log.info("Mobitech SMS sent to {} (attempt {}): {}", phone, attempt, response);
+                        break;
 
-            } catch (Exception ex) {
-                log.error("Retry failed for {}", normalized);
+                    } catch (Exception e) {
+                        log.error("Attempt {} failed for {}: {}", attempt, phone, e.toString());
+                        if (attempt < maxAttempts) {
+                            long delay = 1000L * attempt;
+                            Thread.sleep(delay);
+                            log.info("Retrying SMS to {} after {}ms", phone, delay);
+                        } else {
+                            log.error("All {} attempts failed for {}", maxAttempts, phone);
+                        }
+                    }
+                }
+
+                Thread.sleep(500); // small delay between messages to same number
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("SMS queue processor interrupted for {}", phone, e);
         }
     }
 
