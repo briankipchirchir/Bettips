@@ -22,7 +22,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final SubscriptionRepository subscriptionRepository;
 
-    @Cacheable(value = "userProfile", key = "#username")
+    @Cacheable(value = "userProfile", key = "#user.id")
     public UserDto getUserProfile(User user) {
         Optional<Subscription> activeSub = subscriptionRepository
             .findTopByUserAndActiveTrueOrderByEndDateDesc(user);
