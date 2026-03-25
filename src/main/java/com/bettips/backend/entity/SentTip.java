@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Entity
 public class SentTip {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
