@@ -2,9 +2,11 @@ package com.bettips.backend.service;
 
 import com.bettips.backend.dto.AdminTipRequestDto;
 import com.bettips.backend.dto.TipDto;
+import com.bettips.backend.entity.SentTip;
 import com.bettips.backend.entity.Subscription;
 import com.bettips.backend.entity.Tip;
 import com.bettips.backend.entity.User;
+import com.bettips.backend.repository.SentTipRepository;
 import com.bettips.backend.repository.SubscriptionRepository;
 import com.bettips.backend.repository.TipRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,7 @@ public class TipService {
     private final TipRepository tipRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final SmsService smsService;
+    private final SentTipRepository sentTipRepository;
 
     @Cacheable(value = "tips", key = "'free:' + #date")
     public List<TipDto> getFreeTips(LocalDate date) {
@@ -96,27 +99,31 @@ public class TipService {
         tipRepository.deleteById(id);
     }
 
-    // Called after payment success — send today's tips to the new subscriber
-    @Transactional
     public void sendTodaysTipsToNewSubscriber(User user, Subscription.PlanLevel planLevel) {
         List<Tip> todaysTips = tipRepository.findByGameDate(LocalDate.now());
 
         List<Tip> eligibleTips = todaysTips.stream()
-            .filter(tip -> canAccessTip(tip.getLevel(), planLevel))
-            .collect(Collectors.toList());
+                .filter(tip -> canAccessTip(tip.getLevel(), planLevel))
+                .filter(tip -> !sentTipRepository.existsByUserAndTipId(user, tip.getId())) // skip already sent
+                .collect(Collectors.toList());
 
         if (eligibleTips.isEmpty()) {
             log.info("No tips available today for new subscriber: {}", user.getPhone());
             return;
         }
 
-        // Build one SMS with all eligible tips
         StringBuilder sb = new StringBuilder();
         sb.append("BetTips - Welcome! Here are today's tips:\n\n");
         for (Tip tip : eligibleTips) {
             sb.append(String.format("%s\n%s → %s @ %s\n\n",
-                tip.getLeague(), tip.getFixture(),
-                tip.getPrediction(), tip.getOdds() != null ? tip.getOdds() : "N/A"));
+                    tip.getLeague(), tip.getFixture(),
+                    tip.getPrediction(), tip.getOdds() != null ? tip.getOdds() : "N/A"));
+
+            // Record sent
+            sentTipRepository.save(SentTip.builder()
+                    .user(user)
+                    .tipId(tip.getId())
+                    .build());
         }
         sb.append("Good luck! 🍀");
 
@@ -124,7 +131,6 @@ public class TipService {
         log.info("Sent {} tips to new subscriber: {}", eligibleTips.size(), user.getPhone());
     }
 
-    // Send a single tip to all currently eligible subscribers
     private void sendToEligibleSubscribers(Tip tip) {
         if (tip.getLevel() == Tip.TipLevel.FREE) {
             log.info("Free tip — no SMS needed for: {}", tip.getFixture());
@@ -132,14 +138,6 @@ public class TipService {
             tipRepository.save(tip);
             return;
         }
-
-//        List<Subscription> activeSubscriptions = subscriptionRepository.findAll()
-//            .stream()
-//            .filter(s -> s.isActive() && !s.isExpired())
-//            .filter(s -> canAccessTip(tip.getLevel(), s.getPlanLevel()))
-//            .collect(Collectors.toList());
-
-
 
         List<Subscription> activeSubscriptions = subscriptionRepository
                 .findAllActiveSubscriptions(LocalDateTime.now())
@@ -158,7 +156,22 @@ public class TipService {
         int sentCount = 0;
 
         for (Subscription sub : activeSubscriptions) {
-            smsService.sendSms(sub.getUser().getSmsNumber(), message);
+            User user = sub.getUser();
+
+            // Skip if already sent this tip to this user
+            if (sentTipRepository.existsByUserAndTipId(user, tip.getId())) {
+                log.info("Tip '{}' already sent to {}, skipping", tip.getFixture(), user.getPhone());
+                continue;
+            }
+
+            smsService.sendSms(user.getSmsNumber(), message);
+
+            // Record that this user received this tip
+            sentTipRepository.save(SentTip.builder()
+                    .user(user)
+                    .tipId(tip.getId())
+                    .build());
+
             sentCount++;
         }
 

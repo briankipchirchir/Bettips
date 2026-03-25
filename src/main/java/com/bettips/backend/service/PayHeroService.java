@@ -50,24 +50,22 @@ public class PayHeroService {
 
     @Transactional
     public String initiateStk(User user, String mpesaPhone, String smsPhone,
-                               Subscription.PlanLevel planLevel,
-                               Subscription.Duration duration) {
+                              Subscription.PlanLevel planLevel,
+                              Subscription.Duration duration) {
         int amount = subscriptionService.getPrice(planLevel, duration);
         String externalRef = "BETTIPS-" + System.currentTimeMillis();
 
-        // Save pending payment
         Payment payment = Payment.builder()
-            .user(user)
-            .amount(amount)
-            .phoneNumber(mpesaPhone)
-            .planLevel(planLevel)
-            .duration(duration)
-            .status(Payment.PaymentStatus.PENDING)
-            .checkoutRequestId(externalRef)
-            .build();
+                .user(user)
+                .amount(amount)
+                .phoneNumber(mpesaPhone)
+                .planLevel(planLevel)
+                .duration(duration)
+                .status(Payment.PaymentStatus.PENDING)
+                .checkoutRequestId(externalRef)
+                .build();
         paymentRepository.save(payment);
 
-        // Build PayHero request
         Map<String, Object> body = new HashMap<>();
         body.put("amount", amount);
         body.put("phone_number", normalizePhone(mpesaPhone));
@@ -77,33 +75,37 @@ public class PayHeroService {
         body.put("customer_name", user.getFullName());
         body.put("callback_url", callbackUrl);
 
-        try {
-            Map<?, ?> response = webClient.post()
+        // Fire and don't wait
+        webClient.post()
                 .uri("/api/v2/payments")
                 .header("Authorization", getBasicAuth())
                 .header("Content-Type", "application/json")
                 .bodyValue(body)
                 .retrieve()
                 .bodyToMono(Map.class)
-                .block();
+                .subscribe(
+                        response -> {
+                            log.info("PayHero STK response: {}", response);
+                            if (response == null || !Boolean.TRUE.equals(response.get("success"))) {
+                                log.error("PayHero STK failed: {}", response);
+                                paymentRepository.findByCheckoutRequestId(externalRef).ifPresent(p -> {
+                                    p.setStatus(Payment.PaymentStatus.FAILED);
+                                    paymentRepository.save(p);
+                                });
+                            } else {
+                                log.info("STK push sent to {} ref: {}", mpesaPhone, externalRef);
+                            }
+                        },
+                        error -> {
+                            log.error("PayHero STK push error: {}", error.getMessage());
+                            paymentRepository.findByCheckoutRequestId(externalRef).ifPresent(p -> {
+                                p.setStatus(Payment.PaymentStatus.FAILED);
+                                paymentRepository.save(p);
+                            });
+                        }
+                );
 
-            log.info("PayHero STK response: {}", response);
-
-            if (response != null && Boolean.TRUE.equals(response.get("success"))) {
-                log.info("STK push sent to {} ref: {}", mpesaPhone, externalRef);
-                return externalRef;
-            } else {
-                log.error("PayHero STK failed: {}", response);
-                payment.setStatus(Payment.PaymentStatus.FAILED);
-                paymentRepository.save(payment);
-                return null;
-            }
-        } catch (Exception e) {
-            log.error("PayHero STK push error: {}", e.getMessage());
-            payment.setStatus(Payment.PaymentStatus.FAILED);
-            paymentRepository.save(payment);
-            return null;
-        }
+        return externalRef; // user gets response in ~50ms
     }
     @Transactional
     public void handleCallback(Map<String, Object> payload) {

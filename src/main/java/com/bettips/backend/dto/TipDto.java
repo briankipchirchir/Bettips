@@ -18,4 +18,5 @@ public class TipDto {
     private String analysis;
     private Tip.TipLevel level;
     private boolean sent;
+    private Tip.TipStatus status;
 }

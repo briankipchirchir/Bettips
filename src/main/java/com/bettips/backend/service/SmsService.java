@@ -3,6 +3,7 @@ package com.bettips.backend.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -23,6 +24,7 @@ public class SmsService {
             .baseUrl("https://app.mobitechtechnologies.com")
             .build();
 
+    @Async
     public void sendSms(String phoneNumber, String message) {
         String normalized = normalizePhone(phoneNumber);
         log.info("Sending SMS via Mobitech to {}", normalized);
