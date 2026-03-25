@@ -18,6 +18,7 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import com.bettips.backend.dto.BulkTipRequestDto;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -128,5 +129,19 @@ public class AdminController {
                         })
                         .toList()
         );
+    }
+
+    // Bulk tips — multiple games, one bundled SMS per subscriber
+    @PostMapping("/tips/bulk")
+    public ResponseEntity<List<TipDto>> createBulkTips(
+            @Valid @RequestBody BulkTipRequestDto dto) {
+        return ResponseEntity.ok(tipService.createBulkTips(dto));
+    }
+
+    // Bulk value bets — multiple games, one bundled SMS per subscriber
+    @PostMapping("/value-bets/bulk")
+    public ResponseEntity<List<ValueBetDto>> createBulkValueBets(
+            @Valid @RequestBody List<AdminValueBetRequestDto> dtos) {
+        return ResponseEntity.ok(valueBetService.createBulk(dtos));
     }
 }

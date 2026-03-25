@@ -1,5 +1,8 @@
 package com.bettips.backend.service;
 
+import java.util.ArrayList;
+import java.util.Map;
+
 import com.bettips.backend.dto.AdminValueBetRequestDto;
 import com.bettips.backend.dto.ValueBetDto;
 import com.bettips.backend.entity.Subscription;
@@ -138,6 +141,76 @@ public class ValueBetService {
                 .orElseThrow(() -> new RuntimeException("ValueBet not found: " + betId));
         bet.setStatus(status);
         return valueBetRepository.save(bet);
+    }
+
+
+    @Transactional
+    @CacheEvict(value = "valueBets", allEntries = true)
+    public List<ValueBetDto> createBulk(List<AdminValueBetRequestDto> dtos) {
+        List<ValueBet> savedBets = new ArrayList<>();
+
+        for (AdminValueBetRequestDto dto : dtos) {
+            ValueBet bet = ValueBet.builder()
+                    .category(dto.getCategory())
+                    .matchNumber(dto.getMatchNumber())
+                    .league(dto.getLeague())
+                    .gameDate(dto.getGameDate())
+                    .fixture(dto.getFixture())
+                    .pick(dto.getPick())
+                    .odds(dto.getOdds())
+                    .confidence(dto.getConfidence())
+                    .analysis(dto.getAnalysis())
+                    .build();
+            savedBets.add(valueBetRepository.save(bet));
+            log.info("Bulk value bet saved: {} - {}", bet.getFixture(), bet.getCategory());
+        }
+
+        // Group by category — send one bundled SMS per category
+        Map<ValueBet.Category, List<ValueBet>> byCategory = savedBets.stream()
+                .collect(Collectors.groupingBy(ValueBet::getCategory));
+
+        byCategory.forEach(this::sendBundledValueBetSms);
+
+        return savedBets.stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    private void sendBundledValueBetSms(ValueBet.Category category, List<ValueBet> bets) {
+        List<Subscription> activeSubs = subscriptionRepository.findAll().stream()
+                .filter(s -> s.isActive() && !s.isExpired())
+                .collect(Collectors.toList());
+
+        if (activeSubs.isEmpty()) {
+            log.info("No active subscribers for bundled {} value bets", category);
+            bets.forEach(b -> { b.setSent(true); valueBetRepository.save(b); });
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.format("BetTips %s (%d bets)\n\n",
+                category.name().replace("_", " "), bets.size()));
+
+        for (int i = 0; i < bets.size(); i++) {
+            ValueBet bet = bets.get(i);
+            sb.append(String.format("%d. %s | %s\n   Pick: %s @ %s (%d%% conf)\n\n",
+                    i + 1,
+                    bet.getLeague(),
+                    bet.getFixture(),
+                    bet.getPick(),
+                    bet.getOdds() != null ? bet.getOdds() : "N/A",
+                    bet.getConfidence()
+            ));
+        }
+
+        String message = sb.toString().trim();
+        int sentCount = 0;
+        for (Subscription sub : activeSubs) {
+            smsService.sendSms(sub.getUser().getSmsNumber(), message);
+            sentCount++;
+        }
+
+        bets.forEach(b -> { b.setSent(true); valueBetRepository.save(b); });
+        log.info("Sent bundled {} value bets ({} games) to {} subscribers",
+                category, bets.size(), sentCount);
     }
 
     public ValueBetDto toDto(ValueBet b) {

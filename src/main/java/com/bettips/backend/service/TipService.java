@@ -22,6 +22,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import java.util.ArrayList;
+import java.util.Map;
+import com.bettips.backend.dto.BulkTipRequestDto;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -216,6 +220,99 @@ public class TipService {
                 .orElseThrow(() -> new RuntimeException("Tip not found: " + tipId));
         tip.setStatus(status);
         return tipRepository.save(tip);
+    }
+
+
+    @Transactional
+    @CacheEvict(value = "tips", allEntries = true)
+    public List<TipDto> createBulkTips(BulkTipRequestDto bulkDto) {
+        List<Tip> savedTips = new ArrayList<>();
+
+        // Save all tips first
+        for (AdminTipRequestDto dto : bulkDto.getTips()) {
+            Tip tip = Tip.builder()
+                    .league(dto.getLeague())
+                    .fixture(dto.getFixture())
+                    .kickoffTime(dto.getKickoffTime())
+                    .gameDate(dto.getGameDate())
+                    .prediction(dto.getPrediction())
+                    .odds(dto.getOdds())
+                    .analysis(dto.getAnalysis())
+                    .level(dto.getLevel())
+                    .build();
+            savedTips.add(tipRepository.save(tip));
+            log.info("Bulk tip saved: {} - {}", tip.getFixture(), tip.getLevel());
+        }
+
+        // Group by level — send one bundled SMS per level per subscriber
+        Map<Tip.TipLevel, List<Tip>> byLevel = savedTips.stream()
+                .collect(Collectors.groupingBy(Tip::getLevel));
+
+        byLevel.forEach((level, tips) -> {
+            if (level == Tip.TipLevel.FREE) {
+                tips.forEach(t -> { t.setSent(true); tipRepository.save(t); });
+                log.info("Free tips bulk — no SMS needed");
+                return;
+            }
+            sendBundledSmsToEligibleSubscribers(tips, level);
+        });
+
+        return savedTips.stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    private void sendBundledSmsToEligibleSubscribers(List<Tip> tips, Tip.TipLevel level) {
+        List<Subscription> activeSubscriptions = subscriptionRepository
+                .findAllActiveSubscriptions(LocalDateTime.now())
+                .stream()
+                .filter(s -> canAccessTip(level, s.getPlanLevel()))
+                .collect(Collectors.toList());
+
+        if (activeSubscriptions.isEmpty()) {
+            log.info("No eligible subscribers for bundled {} tips", level);
+            tips.forEach(t -> { t.setSent(true); tipRepository.save(t); });
+            return;
+        }
+
+        String message = buildBundledTipSms(tips, level);
+        int sentCount = 0;
+
+        for (Subscription sub : activeSubscriptions) {
+            User user = sub.getUser();
+
+            smsService.sendSms(user.getSmsNumber(), message);
+
+            // Record each tip as sent for this user
+            for (Tip tip : tips) {
+                if (!sentTipRepository.existsByUserAndTipId(user, tip.getId())) {
+                    sentTipRepository.save(SentTip.builder()
+                            .user(user)
+                            .tipId(tip.getId())
+                            .build());
+                }
+            }
+            sentCount++;
+        }
+
+        tips.forEach(t -> { t.setSent(true); tipRepository.save(t); });
+        log.info("Sent bundled {} tips ({} games) to {} subscribers", level, tips.size(), sentCount);
+    }
+
+    private String buildBundledTipSms(List<Tip> tips, Tip.TipLevel level) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.format("BetTips %s (%d games)\n\n", level.name(), tips.size()));
+
+        for (int i = 0; i < tips.size(); i++) {
+            Tip tip = tips.get(i);
+            sb.append(String.format("%d. %s | %s\n   Pick: %s @ %s\n\n",
+                    i + 1,
+                    tip.getLeague(),
+                    tip.getFixture(),
+                    tip.getPrediction(),
+                    tip.getOdds() != null ? tip.getOdds() : "N/A"
+            ));
+        }
+
+        return sb.toString().trim();
     }
 
     public TipDto toDto(Tip tip) {
