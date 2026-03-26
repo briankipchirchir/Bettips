@@ -154,7 +154,7 @@ public class PayHeroService {
                         mpesaRef != null ? mpesaRef : externalRef
                 );
                 smsService.sendSms(payment.getUser().getSmsNumber(), confirmMsg);
-                tipService.sendTodaysTipsToNewSubscriber(payment.getUser(), payment.getPlanLevel());
+                tipService.sendTodaysTipsToNewSubscriber(payment.getUser(), payment.getPlanLevel(),subscription);
 
                 log.info("Payment SUCCESS for user: {}, ref: {}", payment.getUser().getPhone(), externalRef);
 

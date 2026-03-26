@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.time.LocalTime;
 
 import java.util.ArrayList;
 import java.util.Map;
@@ -103,12 +104,23 @@ public class TipService {
         tipRepository.deleteById(id);
     }
 
-    public void sendTodaysTipsToNewSubscriber(User user, Subscription.PlanLevel planLevel) {
+    public void sendTodaysTipsToNewSubscriber(User user, Subscription.PlanLevel planLevel,Subscription subscription) {
         List<Tip> todaysTips = tipRepository.findByGameDate(LocalDate.now());
 
         List<Tip> eligibleTips = todaysTips.stream()
                 .filter(tip -> canAccessTip(tip.getLevel(), planLevel))
                 .filter(tip -> !sentTipRepository.existsByUserAndTipId(user, tip.getId())) // skip already sent
+                .filter(tip -> {
+                    try {
+                        LocalDateTime kickoff = LocalDateTime.of(
+                                tip.getGameDate(),
+                                java.time.LocalTime.parse(tip.getKickoffTime())
+                        );
+                        return LocalDateTime.now().isBefore(kickoff);
+                    } catch (Exception e) {
+                        return true; // if time is missing/unparseable, include it
+                    }
+                })
                 .collect(Collectors.toList());
 
         if (eligibleTips.isEmpty()) {
@@ -127,6 +139,7 @@ public class TipService {
             sentTipRepository.save(SentTip.builder()
                     .user(user)
                     .tipId(tip.getId())
+                    .subscriptionId(subscription.getId())
                     .build());
         }
         sb.append("Good luck! 🍀");
@@ -162,6 +175,24 @@ public class TipService {
         for (Subscription sub : activeSubscriptions) {
             User user = sub.getUser();
 
+
+            // REPLACE WITH this:
+            if (sub.getDuration() == Subscription.Duration.ONE_DAY) {
+                // ONE_DAY: once used, never again
+                if (sentTipRepository.existsBySubscriptionId(sub.getId())) {
+                    log.info("ONE_DAY subscription {} already used, skipping {}", sub.getId(), user.getPhone());
+                    continue;
+                }
+            } else {
+                // THREE_DAYS / ONE_WEEK / ONE_MONTH: only send within subscribed date range
+                LocalDate tipDate  = tip.getGameDate();
+                LocalDate subStart = sub.getStartDate().toLocalDate();
+                LocalDate subEnd   = sub.getEndDate().toLocalDate();
+                if (tipDate.isBefore(subStart) || tipDate.isAfter(subEnd)) {
+                    log.info("Tip date {} outside subscription range {}-{}, skipping", tipDate, subStart, subEnd);
+                    continue;
+                }
+            }
             // Skip if already sent this tip to this user
             if (sentTipRepository.existsByUserAndTipId(user, tip.getId())) {
                 log.info("Tip '{}' already sent to {}, skipping", tip.getFixture(), user.getPhone());
@@ -179,6 +210,7 @@ public class TipService {
             sentTipRepository.save(SentTip.builder()
                     .user(user)
                     .tipId(tip.getId())
+                    .subscriptionId(sub.getId())
                     .build());
 
             sentCount++;
@@ -289,6 +321,22 @@ public class TipService {
         for (Subscription sub : activeSubscriptions) {
             User user = sub.getUser();
 
+            // REPLACE WITH this:
+            LocalDate tipDate = tips.get(0).getGameDate();
+            if (sub.getDuration() == Subscription.Duration.ONE_DAY) {
+                if (sentTipRepository.existsBySubscriptionId(sub.getId())) {
+                    log.info("ONE_DAY subscription {} already used, skipping {}", sub.getId(), user.getPhone());
+                    continue;
+                }
+            } else {
+                LocalDate subStart = sub.getStartDate().toLocalDate();
+                LocalDate subEnd   = sub.getEndDate().toLocalDate();
+                if (tipDate.isBefore(subStart) || tipDate.isAfter(subEnd)) {
+                    log.info("Tip date {} outside subscription range {}-{}, skipping", tipDate, subStart, subEnd);
+                    continue;
+                }
+            }
+
             smsService.sendSms(user.getSmsNumber(), message);
 
             // Record each tip as sent for this user
@@ -297,6 +345,7 @@ public class TipService {
                     sentTipRepository.save(SentTip.builder()
                             .user(user)
                             .tipId(tip.getId())
+                            .subscriptionId(sub.getId())
                             .build());
                 }
             }

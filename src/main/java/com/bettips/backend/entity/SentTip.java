@@ -27,6 +27,8 @@ public class SentTip {
     @Column(nullable = false)
     private String tipId;
 
+    private String subscriptionId;
+
     @Column(nullable = false)
     @Builder.Default
     private LocalDateTime sentAt = LocalDateTime.now();

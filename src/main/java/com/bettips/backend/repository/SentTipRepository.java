@@ -8,4 +8,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface SentTipRepository extends JpaRepository<SentTip, String> {
     boolean existsByUserAndTipId(User user, String tipId);
+
+    // Has this subscription already been used to send any tip?
+    boolean existsBySubscriptionId(String subscriptionId);
 }
